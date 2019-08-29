@@ -2,7 +2,7 @@ package mau
 package tests
 
 
-import cats.effect.IO
+import cats.effect.{Concurrent, Fiber, IO, Resource}
 import cats.effect.concurrent.Ref
 import org.scalatest.Matchers
 import org.scalatest.funsuite.AnyFunSuiteLike
@@ -17,9 +17,27 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
   implicit val timer = IO.timer(ExecutionContext.global)
 
   def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]) =
-    RefreshRef.resource[IO, Int].use(f).unsafeRunSync()
+    RefreshRef.resource[IO, Int]((_: Int) => IO(print("."))).use(f).unsafeRunSync()
 
   def counter: IO[Ref[IO, Int]] = Ref.of[IO, Int](0)
+
+  def concurrently[A](concurrency: Int)
+                   (treadEnvF: IO[A])
+                   (threadAction: A => IO[Unit]): Resource[IO, List[A]] =
+    (Resource.make {
+      List.fill(concurrency)(treadEnvF).traverse { tef =>
+        for {
+          te <- tef
+          fiber <- Concurrent[IO].start(
+                timer.sleep(25.milliseconds) >> //sleep here to force a concurrent race
+                  threadAction(te)
+              )
+
+          } yield (te, fiber)
+        }
+    } {
+      _.traverse(_._2.cancel).void
+    }).map(_.map(_._1))
 
   test("empty returns None") {
     testWithRef { ref =>
@@ -150,4 +168,24 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
     refreshCount should be >(0)
     refreshCount should be <(4)
   }
+
+
+  test("concurrent access doesn't not produce multiple refreshes cancel itself after use") {
+
+    testWithRef { ref =>
+      concurrently(10)(counter){ threadCount =>
+          ref.getOrFetch(50.milliseconds) {
+            threadCount.update(_ + 1) *> threadCount.get
+          }.void
+      }.use { threadCounts =>
+        for {
+          _ <- timer.sleep(200.milliseconds)
+          counts <- threadCounts.traverse(_.get)
+        } yield
+          counts.count(_ > 2) shouldBe 1
+       }
+      }
+
+    }
+
 }

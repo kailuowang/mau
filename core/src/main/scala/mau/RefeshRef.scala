@@ -6,7 +6,7 @@ import cats.implicits._
 
 import scala.concurrent.duration.FiniteDuration
 
-class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(
+class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]], onRefreshed: V => F[Unit])(
   implicit F: Concurrent[F], T: Timer[F]) {
 
   def cancel: F[Boolean] = ref.modify {
@@ -17,7 +17,7 @@ class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(
   def getOrFetch(period: FiniteDuration)(fetch: F[V]): F[V] = {
     def setRefresh: F[V] = {
       def loop: F[Unit] =
-        (Timer[F].sleep(period) >> fetch).flatMap { v =>
+        (Timer[F].sleep(period) >> (fetch.flatTap(onRefreshed))).flatMap { v =>
           ref.tryUpdate(_.map(_.leftMap(_ => v)))
         } >> loop
 
@@ -43,12 +43,16 @@ class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(
 }
 
 object RefreshRef {
-  def create[F[_]: Concurrent: Timer, V]: F[RefreshRef[F, V]] =
-    Ref.of(none[(V, Fiber[F, Unit])]).map(new RefreshRef[F, V](_))
+  def create[F[_]: Concurrent: Timer, V](onRefreshed: V => F[Unit]): F[RefreshRef[F, V]] =
+    Ref.of(none[(V, Fiber[F, Unit])]).map(new RefreshRef[F, V](_, onRefreshed))
 
   /**
    * Cancel itself after use
    */
+  def resource[F[_]: Concurrent: Timer, V](onRefreshed: V => F[Unit]): Resource[F, RefreshRef[F, V]] =
+    Resource.make(create[F, V](onRefreshed))(_.cancel.void)
+
+
   def resource[F[_]: Concurrent: Timer, V]: Resource[F, RefreshRef[F, V]] =
-    Resource.make(create[F, V])(_.cancel.void)
+    resource[F, V]((_: V) => Concurrent[F].unit)
 }
