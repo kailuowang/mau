@@ -55,7 +55,8 @@ lazy val testsM   = module("tests", CrossType.Pure)
   .dependsOn(coreM)
   .settings(
     noPublishSettings,
-    libs.testDependencies("scalatest")
+    libs.testDependencies("scalatest"),
+    scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   )
 
 

@@ -1,11 +1,13 @@
 package mau
 
-import cats.effect.{Concurrent, Fiber, Timer}
+import cats.effect.{Concurrent, Fiber, Resource, Timer}
 import cats.effect.concurrent.Ref
 import cats.implicits._
+
 import scala.concurrent.duration.FiniteDuration
 
-class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(implicit F: Concurrent[F], T: Timer[F]) {
+class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(
+  implicit F: Concurrent[F], T: Timer[F]) {
 
   def cancel: F[Boolean] = ref.modify {
     case None => (None, F.pure(false))
@@ -36,9 +38,17 @@ class RefreshRef[F[_], V] private(ref: Ref[F, Option[(V, Fiber[F, Unit])]])(impl
       case None => setRefresh
     }
   }
+
+  def get: F[Option[V]] = ref.get.map(_.map(_._1))
 }
 
 object RefreshRef {
   def create[F[_]: Concurrent: Timer, V]: F[RefreshRef[F, V]] =
     Ref.of(none[(V, Fiber[F, Unit])]).map(new RefreshRef[F, V](_))
+
+  /**
+   * Cancel itself after use
+   */
+  def resource[F[_]: Concurrent: Timer, V]: Resource[F, RefreshRef[F, V]] =
+    Resource.make(create[F, V])(_.cancel.void)
 }
