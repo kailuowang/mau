@@ -13,7 +13,7 @@ lazy val libs =  org.typelevel.libraries
 
 lazy val mau = project.in(file("."))
   .settings(rootSettings, noPublishSettings)
-  .aggregate(coreJVM, coreJS)
+  .aggregate(core.jvm, core.js)
 
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -27,8 +27,6 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   ).jsSettings(
     scalaJSStage in Global := FastOptStage
   )
-lazy val coreJVM = core.jvm
-lazy val coreJS = core.js
 
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
