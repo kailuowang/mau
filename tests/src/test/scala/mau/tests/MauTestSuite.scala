@@ -1,7 +1,7 @@
 package mau
 package tests
 
-import cats.effect.{Concurrent, Fiber, IO, Resource}
+import cats.effect.{Concurrent, IO, Resource}
 import cats.effect.concurrent.Ref
 import org.scalatest.Matchers
 import org.scalatest.funsuite.AsyncFunSuite
@@ -9,7 +9,6 @@ import org.scalatest.funsuite.AsyncFunSuite
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import cats.implicits._
-import cats.effect.implicits._
 
 import scala.util.control.NoStackTrace
 
