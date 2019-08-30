@@ -185,7 +185,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           .void
       }.use { threadCounts =>
         for {
-          _ <- timer.sleep(200.milliseconds)
+          _ <- timer.sleep(350.milliseconds)
           counts <- threadCounts.traverse(_.get)
         } yield counts.count(_ > 2) shouldBe 1
       }
