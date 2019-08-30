@@ -20,6 +20,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("core"))
   .settings(
+    name := "mau",
     rootSettings,
     libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
