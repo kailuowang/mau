@@ -1,27 +1,30 @@
 package mau
 package tests
 
-import cats.effect.{Concurrent, Fiber, IO, Resource}
+import cats.effect.{Concurrent, IO, Resource}
 import cats.effect.concurrent.Ref
 import org.scalatest.Matchers
-import org.scalatest.funsuite.AnyFunSuiteLike
+import org.scalatest.funsuite.AsyncFunSuite
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import cats.implicits._
-import cats.effect.implicits._
 
 import scala.util.control.NoStackTrace
 
-class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
-  implicit val ctx = IO.contextShift(ExecutionContext.global)
-  implicit val timer = IO.timer(ExecutionContext.global)
+class RefreshRefSuite extends AsyncFunSuite with Matchers {
 
-  def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]) =
+  implicit override def executionContext: ExecutionContext =
+    ExecutionContext.global
+
+  implicit val ctx = IO.contextShift(executionContext)
+  implicit val timer = IO.timer(executionContext)
+
+  def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]): Future[A] =
     RefreshRef
       .resource[IO, Int]((_: Int) => IO(print(".")))
       .use(f)
-      .unsafeRunSync()
+      .unsafeToFuture()
 
   def counter: IO[Ref[IO, Int]] = Ref.of[IO, Int](0)
 
@@ -46,27 +49,30 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
 
   test("empty returns None") {
     testWithRef { ref =>
-      ref.get
-    } shouldBe None
+      ref.get.map(_ shouldBe None)
+    }
   }
 
   test("get with fetch returns value") {
     testWithRef { ref =>
-      ref.getOrFetch(1.seconds)(IO(1))
-    } shouldBe 1
+      ref.getOrFetch(1.seconds)(IO(1)).map(_ shouldBe 1)
+    }
   }
 
   test("cancel return false if there is no refreshing") {
     testWithRef { ref =>
       ref.cancel
-    } shouldBe false
+        .map(_ shouldBe false)
+    }
   }
 
   test("cancel return true if something is canceled") {
     testWithRef { ref =>
-      ref.getOrFetch(1.seconds)(IO(1)) >>
-        ref.cancel
-    } shouldBe true
+      for {
+        _ <- ref.getOrFetch(1.seconds)(IO(1))
+        r <- ref.cancel
+      } yield r shouldBe true
+    }
   }
 
   test("auto refresh value") {
@@ -134,9 +140,8 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
         }
         _ <- timer.sleep(100.milliseconds)
         c <- count.get
-      } yield c
-
-    } should be > (1)
+      } yield c should be > (1)
+    }
   }
 
   test("returns None after cancel") {
@@ -151,7 +156,7 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
 
   test("resource cancel itself after use") {
 
-    val refreshCount = (for {
+    (for {
       count <- counter
       _ <- RefreshRef.resource[IO, Int].use { ref =>
         for {
@@ -163,10 +168,11 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
       }
       _ <- timer.sleep(150.milliseconds)
       c <- count.get
-    } yield c).unsafeRunSync()
+    } yield {
+      c should be > (0)
+      c should be < (4)
+    }).unsafeToFuture
 
-    refreshCount should be > (0)
-    refreshCount should be < (4)
   }
 
   test("concurrent access doesn't not produce multiple refreshes") {
@@ -179,12 +185,25 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
           .void
       }.use { threadCounts =>
         for {
-          _ <- timer.sleep(200.milliseconds)
+          _ <- timer.sleep(350.milliseconds)
           counts <- threadCounts.traverse(_.get)
         } yield counts.count(_ > 2) shouldBe 1
       }
     }
+  }
 
+  test("concurrent get works") {
+    testWithRef { ref =>
+      ref.getOrFetch(50.milliseconds)(IO(1)) >>
+        concurrently(10)(Ref.of[IO, Option[Int]](None)) { read =>
+          ref.get.flatMap(read.set)
+        }.use { threadReads =>
+          timer.sleep(100.milliseconds) >>
+            threadReads.traverse(_.get).map { results =>
+              results.forall(_ == Some(1)) shouldBe true
+            }
+        }
+    }
   }
 
   test("failed refresh stops and removes the value") {
@@ -223,6 +242,25 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
     }
   }
 
+  test("rethrow error with custom error handler") {
+    testWithRef { ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(50.milliseconds, 1.second) {
+          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(_ <= 1)
+        } {
+          case IntentionalErr => IO.raiseError(IntentionalErr)
+        }
+        _ <- timer.sleep(150.milliseconds)
+        c <- count.get
+        v <- ref.get
+      } yield {
+        c shouldBe 2
+        v shouldBe None
+      }
+    }
+  }
+
   test("remove stale value after continuous failed refresh") {
     testWithRef { ref =>
       for {
@@ -232,11 +270,11 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(250.milliseconds)
+        _ <- timer.sleep(350.milliseconds)
         c <- count.get
         v <- ref.get
       } yield {
-        c should be < (4)
+        c should be < (5)
         v shouldBe None
       }
     }

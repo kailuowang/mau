@@ -1,11 +1,9 @@
 package mau
 
-import java.time.Instant
-
 import cats.effect.{Concurrent, Fiber, Resource, Timer}
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import mau.RefreshRef.Item
+import mau.RefreshRef.{Item, Instant}
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -13,19 +11,52 @@ class RefreshRef[F[_], V] private (
     ref: Ref[F, Option[Item[F, V]]],
     onRefreshed: V => F[Unit])(implicit F: Concurrent[F], T: Timer[F]) {
 
+  /**
+    * Cancel polling and remove data from memory
+    * @return true if there was data and polling, false if it's empty
+    */
   def cancel: F[Boolean] =
     ref.modify {
       case None                => (None, F.pure(false))
       case Some(Item(_, f, _)) => (None, f.cancel *> F.pure(true))
     }.flatten
 
+  /**
+    * Either gets the data from the memory if available, or use the `fetch` to retrieve the data, and setup
+    * a polling every `period` to update the data in memory using `fetch`. Hence the first call to `ref.getOrFetch` will take longer
+    * to actually load the data from upstream to memory. Subsequent call will always return the data from memory.
+    *
+    * When any exception occurs during `getDataFromUpstream`, the refresh stops, and the data is removed from the memory.
+    * All subsequent requests will incure effect in `fetch`, whose failure will be surfaced, until
+    * it succeeds.
+    *
+    * @param period
+    * @param fetch
+    * @return
+    */
   def getOrFetch(period: FiniteDuration)(fetch: F[V]): F[V] =
     get(period, None)(fetch)(PartialFunction.empty)
 
+  /**
+    * Like `getOrFetch(period: FiniteDuration)(fetch: F[V])` but with added resilency against failures in `fetch`.
+    *
+    * After `staleTimeout` of continuous polling failures, the polling will stop and data removed.
+    * A success `fetch`  resets the timer.
+    *
+    * @param period
+    * @param staleTimeout timeout after the last successful `fetch`
+    * @param fetch
+    * @param errorHandler
+    * @return
+    */
   def getOrFetch(period: FiniteDuration, staleTimeout: FiniteDuration)(
       fetch: F[V])(errorHandler: PartialFunction[Throwable, F[Unit]]): F[V] =
     get(period, Some(staleTimeout))(fetch)(errorHandler)
 
+  /**
+    * Simply gets the data from memory
+    * @return Some(v) if exists, None if not
+    */
   def get: F[Option[V]] = ref.get.map(_.map(_.v))
 
   private def get(period: FiniteDuration,
@@ -39,19 +70,19 @@ class RefreshRef[F[_], V] private (
             for {
               itemO <- ref.get
               now <- nowF
-            } yield
-              itemO.fold(false)(
-                _.lastFetch.isBefore(now.minusNanos(timeout.toNanos)))
+            } yield itemO.fold(false)(_.lastFetch < (now - timeout.toNanos))
           }
 
         errorHandler.lift(e) match {
           case None =>
             cancel.void
           case Some(fu) =>
-            (fu >> isStale).flatMap { stale =>
-              if (stale) cancel.void
-              else loop
-            }
+            (fu >> isStale)
+              .flatMap { stale =>
+                if (stale) cancel.void
+                else loop
+              }
+              .handleErrorWith(_ => cancel.void)
         }
       }
 
@@ -89,10 +120,12 @@ class RefreshRef[F[_], V] private (
     }
   }
 
-  private def nowF: F[Instant] = F.delay(Instant.now)
+  private def nowF: F[Instant] =
+    T.clock.monotonic(concurrent.duration.NANOSECONDS)
 }
 
 object RefreshRef {
+  private type Instant = Long
 
   private case class Item[F[_], V](v: V,
                                    refresh: Fiber[F, Unit],
