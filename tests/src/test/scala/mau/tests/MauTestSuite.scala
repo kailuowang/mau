@@ -12,6 +12,8 @@ import scala.concurrent.duration._
 import cats.implicits._
 import cats.effect.implicits._
 
+import scala.util.control.NoStackTrace
+
 class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
   implicit val ctx = IO.contextShift(ExecutionContext.global)
   implicit val timer = IO.timer(ExecutionContext.global)
@@ -171,7 +173,6 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
 
 
   test("concurrent access doesn't not produce multiple refreshes cancel itself after use") {
-
     testWithRef { ref =>
       concurrently(10)(counter){ threadCount =>
           ref.getOrFetch(50.milliseconds) {
@@ -184,8 +185,84 @@ class RefreshRefSuite extends AnyFunSuiteLike with Matchers {
         } yield
           counts.count(_ > 2) shouldBe 1
        }
-      }
+     }
 
+  }
+
+  test("failed refresh stops and removes the value") {
+    testWithRef{ ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(50.milliseconds) {
+          count.update(_ + 1) *> count.get.ensure(new Exception("Boom"))(_ <= 1)
+        }
+        _ <- timer.sleep(150.milliseconds)
+        c <- count.get
+        v <- ref.get
+      } yield {
+        c shouldBe 2
+        v shouldBe None
+      }
     }
+  }
+
+  test("handle error with custom error handler") {
+    testWithRef{ ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(50.milliseconds, 1.second) {
+          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(_ <= 1)
+        } {
+          case IntentionalErr => IO.unit
+        }
+        _ <- timer.sleep(150.milliseconds)
+        c <- count.get
+        v <- ref.get
+      } yield {
+        c should be >=(3)
+        v shouldBe Some(1)
+      }
+    }
+  }
+
+  test("remove stale value after continuous failed refresh") {
+    testWithRef{ ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(50.milliseconds, 100.milliseconds) {
+          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(_ <= 1)
+        } {
+          case IntentionalErr => IO.unit
+        }
+        _ <- timer.sleep(250.milliseconds)
+        c <- count.get
+        v <- ref.get
+      } yield {
+        c should be <(4)
+        v shouldBe None
+      }
+    }
+  }
+
+  test("reset stale timer when success refresh") {
+    testWithRef{ ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(50.milliseconds, 200.milliseconds) {
+          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(i => i != 2 && i != 5) //errors on 2nd and 5th refresh
+        } {
+          case IntentionalErr => IO.unit
+        }
+        _ <- timer.sleep(350.milliseconds) //5th failed refresh doesn't trigger timeout
+        c <- count.get
+        v <- ref.get
+      } yield {
+        c should be > (5)
+        v.get shouldBe >(5)
+      }
+    }
+  }
 
 }
+
+case object IntentionalErr extends RuntimeException with NoStackTrace
