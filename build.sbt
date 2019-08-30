@@ -25,20 +25,17 @@ lazy val mau = project.in(file("."))
   .dependsOn(rootJVM, rootJS)
   .settings(noPublishSettings)
 
-
 lazy val rootJVM = project
   .configure(mkRootJvmConfig(gh.proj, rootSettings, commonJvmSettings))
   .aggregate(coreJVM, testsJVM, docs)
   .dependsOn(coreJVM, testsJVM)
   .settings(noPublishSettings)
 
-
 lazy val rootJS = project
   .configure(mkRootJsConfig(gh.proj, rootSettings, commonJsSettings))
   .aggregate(coreJS, testsJS)
   .dependsOn(coreJS, testsJS)
   .settings(noPublishSettings)
-
 
 lazy val core    = prj(coreM)
 lazy val coreJVM = coreM.jvm
@@ -58,8 +55,6 @@ lazy val testsM   = module("tests", CrossType.Pure)
     libs.testDependencies("scalatest"),
     scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   )
-
-
 
 /** Docs - Generates and publishes the scaladoc API documents and the project web site using sbt-microsite.*/
 lazy val docs = project
