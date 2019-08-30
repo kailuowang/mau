@@ -45,4 +45,4 @@ lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sh
 lazy val scoverageSettings = sharedScoverageSettings(60)
 
 
-lazy val rootSettings =  buildSettings ++ commonSettings ++ publishSettings ++ scoverageSettings
+lazy val rootSettings = buildSettings ++ commonSettings ++ publishSettings ++ scoverageSettings
