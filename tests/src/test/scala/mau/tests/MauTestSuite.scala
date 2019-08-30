@@ -271,11 +271,11 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(250.milliseconds)
+        _ <- timer.sleep(350.milliseconds)
         c <- count.get
         v <- ref.get
       } yield {
-        c should be < (4)
+        c should be < (5)
         v shouldBe None
       }
     }
