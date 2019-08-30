@@ -102,7 +102,7 @@ class RefreshRef[F[_], V] private (
 
       for {
         initialV <- fetch
-        fiber <- F.start(loop)
+        fiber <- F.start(F.suspend(loop))
         now <- nowF
         registeredO <- ref.tryModify {
           case None        => (Some(Item(initialV, fiber, now)), true)
