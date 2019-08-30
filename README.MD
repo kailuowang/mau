@@ -29,12 +29,12 @@ When the upstream becomes temporarily unavailable, for some cases, we can even t
 to downstream. That is, we might want to maintain service to downstream using the data in memory for a little longer 
 while waiting for the upstream to be back online.
 
-A different approach (than lazy loading) is polling upstream periodically to get the latest version to update it. 
-while the periodical polling keeps the data fresh, when upstreams becomes unavailable, we can allow some data staleness to give some time for 
- it to restore. 
+A different approach (than lazy loading) is polling upstream periodically to get the latest version and update the one in memory. 
+This periodical polling keeps the data fresh. Also when upstreams becomes unavailable, this approach can, optionally, allow a grace period of failed polls to maiintain availalbility to downstream. 
 
-Mau provides a pure functional auto pooling data container called `RefreshRef`. 
-User can use it as a single item cache that auto polls from some backend.
+Mau is a pure functional implementation of this pooling approach in Scala. 
+It provides a data container called `RefreshRef`, which can be used as a single item cache that auto polls from upstream.
+
 Best to demonstrate through examples:
 
 ## Usages
