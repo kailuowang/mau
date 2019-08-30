@@ -1,7 +1,4 @@
-import com.typesafe.sbt.SbtGit.git
-import microsites._
-
-import _root_.sbtcrossproject.CrossPlugin.autoImport.CrossType
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 addCommandAlias("gitSnapshots", ";set version in ThisBuild := git.gitDescribedVersion.value.get + \"-SNAPSHOT\"")
 
@@ -11,62 +8,33 @@ val gh = GitHubSettings(org = "kailuowang", proj = "mau", publishOrg = "com.kail
 val mainDev =
   Developer("Kai(luo) Wang", "@kailuowang", "me@kwang.us", new java.net.URL("http://github.com/kailuowang"))
 
-val devs = List(Developer)
 
 lazy val libs =  org.typelevel.libraries
 
-lazy val rootSettings = buildSettings ++ commonSettings ++ publishSettings ++ scoverageSettings
-lazy val module = mkModuleFactory(gh.proj, mkConfig(rootSettings, commonJvmSettings, commonJsSettings))
-lazy val prj = mkPrjFactory(rootSettings)
-
-lazy val mau = project.in(file("."))
-  .configure(mkRootConfig(rootSettings,rootJVM))
-  .aggregate(rootJVM, rootJS )
-  .dependsOn(rootJVM, rootJS)
-  .settings(noPublishSettings)
-
-lazy val rootJVM = project
-  .configure(mkRootJvmConfig(gh.proj, rootSettings, commonJvmSettings))
-  .aggregate(coreJVM, testsJVM)
-  .dependsOn(coreJVM, testsJVM)
-  .settings(noPublishSettings)
-
-lazy val rootJS = project
-  .configure(mkRootJsConfig(gh.proj, rootSettings, commonJsSettings))
-  .aggregate(coreJS, testsJS)
-  .dependsOn(coreJS, testsJS)
-  .settings(noPublishSettings)
-
-lazy val core    = prj(coreM)
-lazy val coreJVM = coreM.jvm
-lazy val coreJS  = coreM.js
-lazy val coreM   = module("core", CrossType.Pure)
+lazy val mau = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("core"))
   .settings(
-    libs.dependencies("cats-effect")
-  )
-
-lazy val tests    = prj(testsM)
-lazy val testsJVM = testsM.jvm
-lazy val testsJS  = testsM.js
-lazy val testsM   = module("tests", CrossType.Pure)
-  .dependsOn(coreM)
-  .settings(
-    noPublishSettings,
+    buildSettings,
+    commonSettings,
+    publishSettings,
+    scoverageSettings,
+    libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
     scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
+  ).jsSettings(
+    scalaJSStage in Global := FastOptStage
   )
+
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
 lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ scalacAllSettings ++ Seq(
   organization := "com.kailuowang",
   parallelExecution in Test := false,
-  crossScalaVersions := Seq(libs.vers("scalac_2.11"), scalaVersion.value, libs.vers("scalac_2.13"))
+  scalaVersion := libs.vers("scalac_2.13"),
+  crossScalaVersions := Seq(libs.vers("scalac_2.11"), scalaVersion.value, libs.vers("scalac_2.12"))
 )
-
-lazy val commonJsSettings = Seq(scalaJSStage in Global := FastOptStage)
-
-lazy val commonJvmSettings = Seq()
 
 lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sharedReleaseProcess
 
