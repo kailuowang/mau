@@ -27,7 +27,7 @@ lazy val mau = project.in(file("."))
 
 lazy val rootJVM = project
   .configure(mkRootJvmConfig(gh.proj, rootSettings, commonJvmSettings))
-  .aggregate(coreJVM, testsJVM, docs)
+  .aggregate(coreJVM, testsJVM)
   .dependsOn(coreJVM, testsJVM)
   .settings(noPublishSettings)
 
@@ -56,19 +56,6 @@ lazy val testsM   = module("tests", CrossType.Pure)
     scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   )
 
-/** Docs - Generates and publishes the scaladoc API documents and the project web site using sbt-microsite.*/
-lazy val docs = project
-  .configure(mkDocConfig(gh, rootSettings, Nil, core))
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(ScalaUnidocPlugin)
-  .settings(
-    crossScalaVersions := Seq(scalaVersion.value),
-    scalacOptions in Tut ~= (_.filterNot(Set("-Ywarn-unused:imports"))),
-    micrositeSettings(gh, mainDev,  "mau"),
-    micrositeDocumentationUrl := "/mau/api/mau/index.html",
-    micrositeDocumentationLabelDescription := "API Documentation",
-    micrositeGithubOwner := "kailuowang"
-  )
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
 lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ scalacAllSettings ++ Seq(
