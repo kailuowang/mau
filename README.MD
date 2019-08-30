@@ -43,7 +43,7 @@ import cats.effect.IO
 import scala.concurrent.duration._
 
 mau.RefreshRef.resource[IO, MyData] //create a resource of a RefreshRef that cancels itself after use,  
-  .use { ref => 
+  .use { ref =>  // In real uses cases, `ref` should reused to serve multiple requests concurrently
 
   ref.getOrFetch(10.second) {  //refresh every 10 second
     getDataFromUpstream    //higher latency effect to get data from upstream
@@ -54,25 +54,22 @@ mau.RefreshRef.resource[IO, MyData] //create a resource of a RefreshRef that can
 a polling to periodically update the data in memory using `getDataFromUpstream`. Hence the first call to `ref.getOrFetch` will take longer
 to actually load the data from upstream to memory. Subsequent call will always return the data from memory. 
 
-Note that in real use cases, you shouldn't use it exactly this way, the ref should be reused to serve multiple subsequent and possibly concurrent usages. 
-
 In the above usage, since no error handler given, when any exception occurs during `getDataFromUpstream`, the refresh stops, and the data is removed from the memory. 
 All subsequent requests will hit upstream through `getDataFromUpstream`, whose failure will surface to downstream, until 
 upstream restores.
 
+As pointed out by the comment, a `RefreshRef` is provided as a [`cats.effect.Resource`](https://typelevel.org/cats-effect/datatypes/resource.html), which gaurantees that the polling gets canceled after usage.
 
 Here is a more advanced example that enables resilience against upstream disruption. 
   
 ```scala
-mau.RefreshRef.resource[IO, MyData] 
-  .use { ref => 
 
-  ref.getOrFetch(10.second, 60.seconds) {  //refresh every 10 second, but when refresh fails, allow 60 seconds of staleness
-    getDataFromUpstream     
-  } {
-    case e: SomeBackendException => IO.unit   //tolerate a certain type of errors from upstream
-  }
+ref.getOrFetch(10.second, 60.seconds) {  //refresh every 10 second, but when refresh fails, allow 60 seconds of staleness
+  getDataFromUpstream     
+} {
+  case e: SomeBackendException => IO.unit   //tolerate a certain type of errors from upstream
 }
+
 ```
 In this example, `SomeBackendException` from `getDataFromUpstream` will be tolerated for 60 seconds, during which time data in memory will be returned.
 After 60 seconds of continuous polling failures, the polling will stop and data removed.  
