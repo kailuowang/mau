@@ -37,6 +37,8 @@ Mau provides a pure functional auto pooling data container called `RefreshRef`.
 User can use it as a single item cache that auto polls from some backend.
 Best to demonstrate through examples:
 
+## Usages
+
 ```scala
 import cats.implicits._
 import cats.effect.IO
@@ -78,6 +80,8 @@ A success `getDataFromUpstream`  resets the timer. BTW, you can also choose to l
 
 Mau is built on top of [`Ref`](https://typelevel.org/cats-effect/concurrency/ref.html) from [cats-effect](https://typelevel.org/cats-effect).
 It has only roughly 100 lines of code, but with extensive tests.
+
+## Contribution
 
 Any contribution is more than welcome. The main purpose of open sourcing this is to seek collaboration. 
 If you have any questions feel free to submit an issue.
