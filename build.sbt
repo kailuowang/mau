@@ -11,20 +11,24 @@ val mainDev =
 
 lazy val libs =  org.typelevel.libraries
 
-lazy val mau = crossProject(JSPlatform, JVMPlatform)
+lazy val mau = project.in(file("."))
+  .settings(rootSettings, noPublishSettings)
+  .aggregate(coreJVM, coreJS)
+
+
+lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("core"))
   .settings(
-    buildSettings,
-    commonSettings,
-    publishSettings,
-    scoverageSettings,
+    rootSettings,
     libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
     scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   ).jsSettings(
     scalaJSStage in Global := FastOptStage
   )
+lazy val coreJVM = core.jvm
+lazy val coreJS = core.js
 
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
@@ -33,10 +37,13 @@ lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCo
   organization := "com.kailuowang",
   parallelExecution in Test := false,
   scalaVersion := libs.vers("scalac_2.13"),
-  crossScalaVersions := Seq(libs.vers("scalac_2.11"), scalaVersion.value, libs.vers("scalac_2.12"))
+  crossScalaVersions := Seq(libs.vers("scalac_2.11"), scalaVersion.value, libs.vers("scalac_2.12")),
+  developers := List(mainDev)
 )
 
 lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sharedReleaseProcess
 
 lazy val scoverageSettings = sharedScoverageSettings(60)
 
+
+lazy val rootSettings =  buildSettings ++ commonSettings ++ publishSettings ++ scoverageSettings
