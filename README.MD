@@ -14,11 +14,10 @@ libraryDependencies +=
 ```
 
 ## Motivation
-
-Sometimes there is a need to store a small set of data in memory to minimize latency at the cost of some controlled staleness. 
  
-It is commonly achieved through some caching library which lazy loads the data from upstream, together with a TTL (Time to Live) 
-to avoid stale data. 
+It is common that applications cache data from upstream in local memory to avoid latency while allowing some data staleness. 
+This is usually achieved through some caching library which lazy loads the data from upstream, together with a TTL (Time to Live) 
+to control the maximum staleness allowed. 
 
 This lazy loading approach has one inconvenience -  when cached data expires TTL, data in cache needs to be invalidated and re-retrieved
  from upstream, during which time incoming requests from downstream need to wait for the data from upstream and hence 
@@ -30,10 +29,19 @@ to downstream. That is, we might want to maintain service to downstream using th
 while waiting for the upstream to be back online.
 
 A different approach (than lazy loading) is polling upstream periodically to get the latest version and update the one in memory. 
-This periodical polling keeps the data fresh. Also when upstreams becomes unavailable, this approach can, optionally, allow a grace period of failed polls to maiintain availalbility to downstream. 
+This periodical polling keeps the data fresh. Also when upstreams becomes unavailable, this approach can, optionally, 
+allow a grace period of failed polls to maiintain availalbility to downstream. 
+ 
+Mau is a pure functional implementation of this pooling approach in Scala.
+It provides a data container called `RefreshRef`, which can be used as a single entry cache that auto polls from upstream.
 
-Mau is a pure functional implementation of this pooling approach in Scala. 
-It provides a data container called `RefreshRef`, which can be used as a single item cache that auto polls from upstream.
+This single entry cache keeps the data in memory regardless of usage, hence it's only applicable 
+when the number of such containers is bounded in the application. 
+
+It's suitable to keep information whose size is relatively fixed in memory. 
+A possible example use case might be a top 10 most popular songs on a music app.
+The query can be expensive, but the data size is fixed and can allow some staleness.
+
 
 Best to demonstrate through examples:
 
