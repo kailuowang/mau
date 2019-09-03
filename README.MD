@@ -22,8 +22,8 @@ to control the maximum staleness allowed.
 This lazy loading approach has one inconvenience -  when cached data expires TTL, data in the cache needs to be invalidated and re-retrieved
  from upstream, during which time incoming requests from downstream need to wait for the data from upstream and hence experience the higher latency.  
  
-Another missed opportunity for lazy loading caching is resilience against upstream disruptions. 
-When the upstream becomes temporarily unavailable, for some cases, we can even tolerate a slightly more stale data to maintain availability
+Another missed opportunity for lazy loading cache is resilience against upstream disruptions. 
+When the upstream becomes temporarily unavailable, for some cases, we can tolerate a slightly more stale data to maintain availability
 to downstream. That is, we might want to maintain service to downstream using the data in memory for a little longer 
 while waiting for the upstream to get back online.
 
