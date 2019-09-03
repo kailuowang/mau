@@ -40,7 +40,7 @@ A possible example use case might be a top 10 most popular songs on a music app.
 The query can be expensive, but the data size is fixed and can allow some staleness.
 
 Another example is distributed configuration. The applications can work with slightly stale configuration, but ideally, the reads should be directly from memory, and
-in case of configuration service going down, the applications need to be able remain functioning for a while. 
+in case of configuration service going down, the applications need to be able to remain functioning for a while. 
 
 
 Best to demonstrate through examples:
