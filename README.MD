@@ -19,28 +19,28 @@ It is common that applications cache data from upstream in local memory to avoid
 This is usually achieved through some caching library which lazy loads the data from upstream, together with a TTL (Time to Live) 
 to control the maximum staleness allowed. 
 
-This lazy loading approach has one inconvenience -  when cached data expires TTL, data in cache needs to be invalidated and re-retrieved
- from upstream, during which time incoming requests from downstream need to wait for the data from upstream and hence 
- experience the higher latency.  
+This lazy loading approach has one inconvenience -  when cached data expires TTL, data in the cache needs to be invalidated and re-retrieved
+ from upstream, during which time incoming requests from downstream need to wait for the data from upstream and hence experience the higher latency.  
  
-Another missed opportunity for simple cache with TTL is resilience against upstream disruptions. 
+Another missed opportunity for lazy loading caching is resilience against upstream disruptions. 
 When the upstream becomes temporarily unavailable, for some cases, we can even tolerate a slightly more stale data to maintain availability
 to downstream. That is, we might want to maintain service to downstream using the data in memory for a little longer 
-while waiting for the upstream to be back online.
+while waiting for the upstream to get back online.
 
-A different approach (than lazy loading) is polling upstream periodically to get the latest version and update the one in memory. 
-This periodical polling keeps the data fresh. Also when upstreams becomes unavailable, this approach can, optionally, 
-allow a grace period of failed polls to maiintain availalbility to downstream. 
+A different approach is polling upstream periodically to retrieve the latest version and update memory. 
+This periodical polling keeps the data fresh. Also, when upstreams becomes unavailable, this approach can, optionally, 
+allow a grace period of failed polls to maintain availability to downstream. 
  
 Mau is a pure functional implementation of this pooling approach in Scala.
-It provides a data container called `RefreshRef`, which can be used as a single entry cache that auto polls from upstream.
+It provides a data container called `RefreshRef`, which can be used as a single entry cache with auto polling from upstream.
 
-This single entry cache keeps the data in memory regardless of usage, hence it's only applicable 
-when the number of such containers is bounded in the application. 
+This single-entry cache keeps the data in memory regardless of usage; hence it's only applicable when the number of such containers is bounded in the application. I.E., it's suitable to keep in memory information whose size is relatively fixed. 
 
-It's suitable to keep information whose size is relatively fixed in memory. 
 A possible example use case might be a top 10 most popular songs on a music app.
 The query can be expensive, but the data size is fixed and can allow some staleness.
+
+Another example is distributed configuration. The applications can work with slightly stale configuration, but ideally, the reads should be directly from memory, and
+in case of configuration service going down, the applications need to be able remain functioning for a while. 
 
 
 Best to demonstrate through examples:
