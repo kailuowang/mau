@@ -3,7 +3,7 @@ package tests
 
 import cats.effect.{Concurrent, IO, Resource}
 import cats.effect.concurrent.Ref
-import org.scalatest.Matchers
+import org.scalatest.{Assertion, Matchers}
 import org.scalatest.funsuite.AsyncFunSuite
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,6 +23,12 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
   def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]): Future[A] =
     RefreshRef
       .resource[IO, Int]((_: Int) => IO(print(".")))
+      .use(f)
+      .unsafeToFuture()
+
+  def testWithRefG[A, T](f: RefreshRef[IO, T] => IO[A]): Future[A] =
+    RefreshRef
+      .resource[IO, T]
       .use(f)
       .unsafeToFuture()
 
@@ -232,7 +238,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(150.milliseconds)
+        _ <- timer.sleep(200.milliseconds)
         c <- count.get
         v <- ref.get
       } yield {
@@ -296,6 +302,20 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
       } yield {
         c should be > (5)
         v.get shouldBe >(5)
+      }
+    }
+  }
+
+  test("memory") {
+    testWithRefG[Assertion, List[Int]] { ref =>
+      for {
+        _ <- ref.getOrFetch(40.milliseconds) {
+          IO.pure(List.fill(100)(2))
+        }
+        _ <- timer.sleep(300.seconds) //5th failed refresh doesn't trigger timeout
+        v <- ref.get
+      } yield {
+        v.get.size shouldBe 10000000
       }
     }
   }
