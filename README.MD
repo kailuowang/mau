@@ -29,7 +29,8 @@ while waiting for the upstream to get back online.
 
 A different approach is polling upstream periodically to retrieve the latest version and update memory. 
 This periodical polling keeps the data fresh. Also, when upstreams becomes unavailable, this approach can, optionally, 
-allow a grace period of failed polls to maintain availability to downstream. 
+allow a grace period of failed polls to maintain availability to downstream. A good example of this approach in Http cache is Fastly's 
+[Stale-While-Revalidate and Stale-If-Error](https://www.fastly.com/blog/stale-while-revalidate-stale-if-error-available-today).
  
 Mau is a pure functional implementation of this pooling approach in Scala.
 It provides a data container called `RefreshRef`, which can be used as a single entry cache with auto polling from upstream.
