@@ -223,6 +223,27 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
     }
   }
 
+  test("zero length refresh period simply fetch on every time it fetches") {
+    testWithRef { ref =>
+      for {
+        count <- counter
+        _ <- ref.getOrFetch(0.milliseconds) {
+          count.update(_ + 1).as(1)
+        }
+        c1 <- count.get
+        _ <- timer.sleep(150.milliseconds)
+
+        _ <- ref.getOrFetch(0.milliseconds) {
+          count.update(_ + 1).as(1)
+        }
+        c2 <- count.get
+      } yield {
+        c1 shouldBe 1
+        c2 shouldBe 2
+      }
+    }
+  }
+
   test("handle error with custom error handler") {
     testWithRef { ref =>
       for {
