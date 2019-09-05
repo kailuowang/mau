@@ -7,7 +7,7 @@ import mau.RefreshRef.{Item, Instant}
 
 import scala.concurrent.duration.FiniteDuration
 
-class RefreshRef[F[_], V] private (
+final class RefreshRef[F[_], V] private (
     ref: Ref[F, Option[Item[F, V]]],
     onRefreshed: V => F[Unit])(implicit F: Concurrent[F], T: Timer[F]) {
 
@@ -30,7 +30,7 @@ class RefreshRef[F[_], V] private (
     * All subsequent requests will incure effect in `fetch`, whose failure will be surfaced, until
     * it succeeds.
     *
-    * @param period
+    * @param period if set to zero will simply return `fetch`
     * @param fetch
     * @return
     */
@@ -43,7 +43,7 @@ class RefreshRef[F[_], V] private (
     * After `staleTimeout` of continuous polling failures, the polling will stop and data removed.
     * A success `fetch`  resets the timer.
     *
-    * @param period
+    * @param period if set to zero will simply return `fetch`
     * @param staleTimeout timeout after the last successful `fetch`
     * @param fetch
     * @param errorHandler
@@ -114,10 +114,12 @@ class RefreshRef[F[_], V] private (
       } yield initialV
     }
 
-    ref.get.flatMap {
-      case Some(Item(v, _, _)) => v.pure[F]
-      case None                => startRefresh
-    }
+    if (period.toNanos == 0L) fetch
+    else
+      ref.get.flatMap {
+        case Some(Item(v, _, _)) => v.pure[F]
+        case None                => startRefresh
+      }
   }
 
   private def nowF: F[Instant] =
