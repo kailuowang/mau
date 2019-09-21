@@ -3,7 +3,6 @@ package tests
 
 import cats.effect.{Concurrent, IO, Resource}
 import cats.effect.concurrent.Ref
-import org.scalatest.Matchers
 import org.scalatest.funsuite.AsyncFunSuite
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -11,6 +10,7 @@ import scala.concurrent.duration._
 import cats.implicits._
 
 import scala.util.control.NoStackTrace
+import org.scalatest.matchers.should.Matchers
 
 class RefreshRefSuite extends AsyncFunSuite with Matchers {
 
