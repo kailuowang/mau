@@ -30,7 +30,9 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
 
   def concurrently[A](
       concurrency: Int
-  )(treadEnvF: IO[A])(threadAction: A => IO[Unit]): Resource[IO, List[A]] =
+    )(treadEnvF: IO[A]
+    )(threadAction: A => IO[Unit]
+    ): Resource[IO, List[A]] =
     (Resource
       .make {
         List.fill(concurrency)(treadEnvF).traverse { tef =>

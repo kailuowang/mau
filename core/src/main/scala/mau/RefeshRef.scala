@@ -23,7 +23,9 @@ abstract class RefreshRef[F[_], V] {
   protected def get(
       period: FiniteDuration,
       staleTimeoutO: Option[FiniteDuration]
-  )(fetch: F[V])(errorHandler: PartialFunction[Throwable, F[Unit]]): F[V]
+    )(fetch: F[V]
+    )(errorHandler: PartialFunction[Throwable, F[Unit]]
+    ): F[V]
 
   /**
     * Either gets the data from the memory if available, or use the `fetch` to retrieve the data, and setup
@@ -53,9 +55,12 @@ abstract class RefreshRef[F[_], V] {
     * @param errorHandler
     * @return
     */
-  def getOrFetch(period: FiniteDuration, staleTimeout: FiniteDuration)(
-      fetch: F[V]
-  )(errorHandler: PartialFunction[Throwable, F[Unit]]): F[V] =
+  def getOrFetch(
+      period: FiniteDuration,
+      staleTimeout: FiniteDuration
+    )(fetch: F[V]
+    )(errorHandler: PartialFunction[Throwable, F[Unit]]
+    ): F[V] =
     get(period, Some(staleTimeout))(fetch)(errorHandler)
 
 }
@@ -66,12 +71,13 @@ object RefreshRef {
   private case class Item[F[_], V](
       v: V,
       refresh: Fiber[F, Unit],
-      lastFetch: Instant
-  )
+      lastFetch: Instant)
 
   def create[F[_], V](
       onRefreshed: V => F[Unit]
-  )(implicit F: Concurrent[F], T: Timer[F]): F[RefreshRef[F, V]] =
+    )(implicit F: Concurrent[F],
+      T: Timer[F]
+    ): F[RefreshRef[F, V]] =
     Ref.of(none[Item[F, V]]).map { ref =>
       new RefreshRef[F, V] {
 
@@ -90,9 +96,9 @@ object RefreshRef {
         protected def get(
             period: FiniteDuration,
             staleTimeoutO: Option[FiniteDuration]
-        )(
-            fetch: F[V]
-        )(errorHandler: PartialFunction[Throwable, F[Unit]]): F[V] = {
+          )(fetch: F[V]
+          )(errorHandler: PartialFunction[Throwable, F[Unit]]
+          ): F[V] = {
           def startRefresh: F[V] = {
 
             def onFetchError(e: Throwable): F[Unit] = {
@@ -164,7 +170,7 @@ object RefreshRef {
     */
   def resource[F[_]: Concurrent: Timer, V](
       onRefreshed: V => F[Unit]
-  ): Resource[F, RefreshRef[F, V]] =
+    ): Resource[F, RefreshRef[F, V]] =
     Resource.make(create[F, V](onRefreshed))(_.cancel.void)
 
   def resource[F[_]: Concurrent: Timer, V]: Resource[F, RefreshRef[F, V]] =
