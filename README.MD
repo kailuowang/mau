@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/kailuowang/mau.svg?branch=master)](https://travis-ci.org/kailuowang/mau)
 
-## Mau - A tiny library for an auto polling data container
+## Mau - A toolbox of mid level constructs built on cats-effect
 
 
 ## Installation
@@ -13,7 +13,23 @@ libraryDependencies +=
   "com.kailuowang" %% "mau" % "0.1.1"
 ```
 
-## Motivation
+This library provides a set of small and well-tested mid-level constructs
+  built on top of cats-effect. 
+  The constructs are small, the code is easy to read and duplicate to your own projects. 
+  The main value of this project is the test suites.   
+  
+## Features: 
+
+* [RefreshRef](#refreshref) An auto polling data container
+* [Repeating](#repeating) Repeating of an effect, which can be paused and resumed  
+
+
+
+## RefreshRef
+
+An auto polling data container
+
+### Motivation
  
 It is common that applications cache data from upstream in local memory to avoid latency while allowing some data staleness. 
 This is usually achieved through some caching library which lazy loads the data from upstream, together with a TTL (Time to Live) 
@@ -46,7 +62,7 @@ in case of configuration service going down, the applications need to be able to
 
 Best to demonstrate through examples:
 
-## Usages
+### Usages
 
 ```scala
 import cats.implicits._
@@ -89,6 +105,26 @@ A success `getDataFromUpstream`  resets the timer. BTW, you can also choose to l
 
 Mau is built on top of [`Ref`](https://typelevel.org/cats-effect/concurrency/ref.html) from [cats-effect](https://typelevel.org/cats-effect).
 It has only roughly 100 lines of code, but with extensive tests.
+
+
+## Repeating
+
+`Repeating` is construct that allows repeating an effect at a certain frequency. Also the repeating can be paused and resumed
+
+### Usages
+
+```scala
+
+import mau.Repeating
+
+Repeating.resource(myEffect, 50.milliseconds).use { repeating =>
+  for {
+    _ <- repeating.pause
+    _ <- repeating.resume
+  } yield ()   
+}
+
+```
 
 ## Contribution
 
