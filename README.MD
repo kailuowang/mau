@@ -109,7 +109,7 @@ It has only roughly 100 lines of code, but with extensive tests.
 
 ## Repeating
 
-`Repeating` is construct that allows repeating an effect at a certain frequency. Also the repeating can be paused and resumed
+`Repeating` is construct that allows repeating an effect at a certain frequency. Also the repeating can be paused and resumed. 
 
 ### Usages
 
@@ -117,7 +117,7 @@ It has only roughly 100 lines of code, but with extensive tests.
 
 import mau.Repeating
 
-Repeating.resource(myEffect, 50.milliseconds).use { repeating =>
+Repeating.resource(myEffect, repeatDuration = 50.milliseconds, runInParallel = true).use { repeating =>
   for {
     _ <- repeating.pause
     _ <- repeating.resume
@@ -125,6 +125,17 @@ Repeating.resource(myEffect, 50.milliseconds).use { repeating =>
 }
 
 ```
+
+### Alternative options
+An alternative solution to this can be built using [fs2](https://fs2.io).  The basic idea was [given by Gavin Bisesi](https://gitter.im/typelevel/cats-effect?at=5db09d5ffb4dab784af1a29a) in the following example code
+```scala
+SignallingRef[F, Boolean](false).flatMap { paused =>
+  val doStuff = fs2.Stream.eval(myEffect).repeat.pauseWhen(paused)
+  pauseLogicStream(paused) concurrently doStuff
+}
+```
+
+If you don't need pause/resume, consider [fs2-cron](https://github.com/fthomas/fs2-cron)
 
 ## Contribution
 

@@ -1,6 +1,6 @@
 package mau
 
-import cats.effect.concurrent.Ref
+import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{Concurrent, Fiber, Resource, Timer}
 import cats.implicits._
 
@@ -25,9 +25,13 @@ abstract class Repeating[F[_]] {
 
 object Repeating {
 
+  /**
+    * see doc of [resource]
+    */
   def create[F[_]](
       effect: F[Unit],
-      repeatDuration: FiniteDuration
+      repeatDuration: FiniteDuration,
+      runInParallel: Boolean
     )(implicit F: Concurrent[F],
       T: Timer[F]
     ): F[Repeating[F]] = {
@@ -37,23 +41,26 @@ object Repeating {
         new Repeating[F] {
           def pause: F[Boolean] =
             for {
-              fiberO <- ref.modify(existing => (None, existing))
+              fiberO <- ref.getAndSet(None)
               success <- fiberO.traverse(_.cancel).map(_.isDefined)
             } yield success
 
           def resume: F[Boolean] = {
-            def loop: F[Unit] =
-              T.sleep(repeatDuration) >> effect >> loop
+            def loop: F[Unit] = {
+              val runEffect = if (runInParallel) F.start(effect).void else effect
+              T.sleep(repeatDuration) >> runEffect >> loop
+            }
 
             running.ifM(
               false.pure[F],
               for {
-                fiber <- F.start(loop)
+                go <- Deferred[F, Unit]
+                fiber <- F.start(go.get >> loop)
                 success <- ref.modify { existing =>
                   if (existing.isDefined) (existing, false)
                   else (Some(fiber), true)
                 }
-                _ <- if (!success) fiber.cancel else F.unit
+                _ <- if (success) go.complete(()) else fiber.cancel
               } yield success
             )
           }
@@ -65,9 +72,19 @@ object Repeating {
 
   }
 
+  /**
+    *
+    * @param effect the effect to be repeated
+    * @param repeatDuration duration between each repetition
+    * @param runInParallel run the effect in parallel. This will make the execution
+    *                      timing more accurate. Also it prevent `pause` from canceling
+    *                      the effect.
+    *
+    */
   def resource[F[_]: Concurrent: Timer](
       effect: F[Unit],
-      repeatDuration: FiniteDuration
+      repeatDuration: FiniteDuration,
+      runInParallel: Boolean
     ): Resource[F, Repeating[F]] =
-    Resource.make(create(effect, repeatDuration))(_.pause.void)
+    Resource.make(create(effect, repeatDuration, runInParallel))(_.pause.void)
 }
