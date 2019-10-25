@@ -3,7 +3,7 @@ package tests
 
 import cats.effect.{Concurrent, IO, Resource}
 import cats.effect.concurrent.Ref
-import org.scalatest.Matchers
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AsyncFunSuite
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,8 +28,11 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
 
   def counter: IO[Ref[IO, Int]] = Ref.of[IO, Int](0)
 
-  def concurrently[A](concurrency: Int)(treadEnvF: IO[A])(
-      threadAction: A => IO[Unit]): Resource[IO, List[A]] =
+  def concurrently[A](
+      concurrency: Int
+    )(treadEnvF: IO[A]
+    )(threadAction: A => IO[Unit]
+    ): Resource[IO, List[A]] =
     (Resource
       .make {
         List.fill(concurrency)(treadEnvF).traverse { tef =>
@@ -306,8 +309,9 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
       for {
         count <- counter
         _ <- ref.getOrFetch(50.milliseconds, 200.milliseconds) {
-          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(i =>
-            i != 2 && i != 5) //errors on 2nd and 5th refresh
+          count.update(_ + 1) *> count.get.ensure(IntentionalErr)(
+            i => i != 2 && i != 5
+          ) //errors on 2nd and 5th refresh
         } {
           case IntentionalErr => IO.unit
         }
