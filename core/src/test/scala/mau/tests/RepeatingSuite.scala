@@ -133,7 +133,8 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
         }
         result <- ref.get
       } yield {
-        result should be > 100000
+        val threshod = if (Platform.isJs) 100 else 100000
+        result should be > threshod
       }
     }
   }
