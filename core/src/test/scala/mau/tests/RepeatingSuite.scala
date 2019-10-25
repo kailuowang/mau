@@ -23,32 +23,33 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
   "Repeating" - {
     "repeat effect when created, pause when resource released" in {
       for {
-        ref <- Ref[IO].of(0)
-        _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use { _ =>
-          timer.sleep(500.milliseconds)
+        counter <- Ref[IO].of(0)
+        _ <- Repeating.resource(counter.update(_ + 1), 50.milliseconds, true).use {
+          _ =>
+            timer.sleep(500.milliseconds)
         }
         _ <- timer.sleep(500.milliseconds)
-        result <- ref.get
+        count <- counter.get
 
       } yield {
-        result should be > 7
-        result should be < 15
+        count should be > 5
+        count should be < 15
       }
     }
 
     "pause" - {
       "pause effect" in {
         for {
-          ref <- Ref[IO].of(0)
-          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use {
+          counter <- Ref[IO].of(0)
+          _ <- Repeating.resource(counter.update(_ + 1), 50.milliseconds, true).use {
             r =>
               timer.sleep(500.milliseconds) >> r.pause >> timer
                 .sleep(500.milliseconds)
           }
-          result <- ref.get
+          count <- counter.get
         } yield {
-          result should be > 7
-          result should be < 15
+          count should be > 5
+          count should be < 15
         }
       }
 
@@ -72,29 +73,29 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "does not cancel the effect already running in parallel" in {
         for {
-          ref <- Ref[IO].of(0)
-          effect = timer.sleep(400.milliseconds) >> ref.update(_ + 1)
+          counter <- Ref[IO].of(0)
+          effect = timer.sleep(400.milliseconds) >> counter.update(_ + 1)
           _ <- Repeating.resource(effect, 100.milliseconds, true).use { r =>
             timer.sleep(200.milliseconds) >> r.pause
           }
           _ <- timer.sleep(700.milliseconds)
-          result <- ref.get
+          count <- counter.get
         } yield {
-          result should be > 0
+          count should be > 0
         }
       }
 
       "cancels the effect already running but no in parallel" in {
         for {
-          ref <- Ref[IO].of(0)
-          effect = timer.sleep(400.milliseconds) >> ref.update(_ + 1)
+          counter <- Ref[IO].of(0)
+          effect = timer.sleep(400.milliseconds) >> counter.update(_ + 1)
           _ <- Repeating.resource(effect, 100.milliseconds, false).use { r =>
             timer.sleep(200.milliseconds) >> r.pause
           }
           _ <- timer.sleep(700.milliseconds)
-          result <- ref.get
+          count <- counter.get
         } yield {
-          result shouldBe 0
+          count shouldBe 0
         }
       }
     }
@@ -102,15 +103,15 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
     "resume" - {
       "resume paused effect" in {
         for {
-          ref <- Ref[IO].of(0)
-          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use {
+          counter <- Ref[IO].of(0)
+          _ <- Repeating.resource(counter.update(_ + 1), 50.milliseconds, true).use {
             r =>
               r.pause >> r.resume >> timer.sleep(500.milliseconds)
           }
-          result <- ref.get
+          count <- counter.get
 
         } yield {
-          result should be > 7
+          count should be > 7
         }
       }
 
@@ -156,14 +157,15 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
     "safe for long run" in {
       for {
-        ref <- Ref[IO].of(0)
-        _ <- Repeating.resource(ref.update(_ + 1), 0.milliseconds, true).use { r =>
-          timer.sleep(5.seconds)
+        counter <- Ref[IO].of(0)
+        _ <- Repeating.resource(counter.update(_ + 1), 0.milliseconds, true).use {
+          r =>
+            timer.sleep(5.seconds)
         }
-        result <- ref.get
+        count <- counter.get
       } yield {
         val threshod = if (Platform.isJs) 100 else 100000
-        result should be > threshod
+        count should be > threshod
       }
     }
   }
