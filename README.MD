@@ -117,7 +117,7 @@ It has only roughly 100 lines of code, but with extensive tests.
 
 import mau.Repeating
 
-Repeating.resource(myEffect, 50.milliseconds).use { repeating =>
+Repeating.resource(myEffect, repeatDuration = 50.milliseconds, runInParallel = true).use { repeating =>
   for {
     _ <- repeating.pause
     _ <- repeating.resume

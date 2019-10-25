@@ -24,7 +24,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
     "repeat effect when created, pause when resource released" in {
       for {
         ref <- Ref[IO].of(0)
-        _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds).use { _ =>
+        _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use { _ =>
           timer.sleep(500.milliseconds)
         }
         _ <- timer.sleep(500.milliseconds)
@@ -40,8 +40,10 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
       "pause effect" in {
         for {
           ref <- Ref[IO].of(0)
-          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds).use { r =>
-            timer.sleep(500.milliseconds) >> r.pause >> timer.sleep(500.milliseconds)
+          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use {
+            r =>
+              timer.sleep(500.milliseconds) >> r.pause >> timer
+                .sleep(500.milliseconds)
           }
           result <- ref.get
         } yield {
@@ -52,7 +54,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "returns true called when running" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.pause
           }
@@ -61,22 +63,49 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "returns false called when paused" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.pause >> r.pause
           }
           .map(_ shouldBe false)
       }
 
+      "does not cancel the effect already running in parallel" in {
+        for {
+          ref <- Ref[IO].of(0)
+          effect = timer.sleep(400.milliseconds) >> ref.update(_ + 1)
+          _ <- Repeating.resource(effect, 100.milliseconds, true).use { r =>
+            timer.sleep(200.milliseconds) >> r.pause
+          }
+          _ <- timer.sleep(700.milliseconds)
+          result <- ref.get
+        } yield {
+          result should be > 0
+        }
+      }
+
+      "cancels the effect already running but no in parallel" in {
+        for {
+          ref <- Ref[IO].of(0)
+          effect = timer.sleep(400.milliseconds) >> ref.update(_ + 1)
+          _ <- Repeating.resource(effect, 100.milliseconds, false).use { r =>
+            timer.sleep(200.milliseconds) >> r.pause
+          }
+          _ <- timer.sleep(700.milliseconds)
+          result <- ref.get
+        } yield {
+          result shouldBe 0
+        }
+      }
     }
 
     "resume" - {
-
       "resume paused effect" in {
         for {
           ref <- Ref[IO].of(0)
-          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds).use { r =>
-            r.pause >> r.resume >> timer.sleep(500.milliseconds)
+          _ <- Repeating.resource(ref.update(_ + 1), 50.milliseconds, true).use {
+            r =>
+              r.pause >> r.resume >> timer.sleep(500.milliseconds)
           }
           result <- ref.get
 
@@ -87,7 +116,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "returns false called when running" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.resume
           }
@@ -96,7 +125,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "returns true called when pause" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.pause >> r.resume
           }
@@ -108,7 +137,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
     "running" - {
       "returns true called when running" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.running
           }
@@ -117,7 +146,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
 
       "returns true called when pause" in {
         Repeating
-          .resource(IO.unit, 50.milliseconds)
+          .resource(IO.unit, 50.milliseconds, true)
           .use { r =>
             r.pause >> r.running
           }
@@ -128,7 +157,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
     "safe for long run" in {
       for {
         ref <- Ref[IO].of(0)
-        _ <- Repeating.resource(ref.update(_ + 1), 0.milliseconds).use { r =>
+        _ <- Repeating.resource(ref.update(_ + 1), 0.milliseconds, true).use { r =>
           timer.sleep(5.seconds)
         }
         result <- ref.get
