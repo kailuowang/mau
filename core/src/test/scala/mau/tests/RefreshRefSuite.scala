@@ -315,7 +315,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(1600.milliseconds) //5th failed refresh doesn't trigger timeout
+        _ <- timer.sleep(3.seconds)
         c <- count.get
         v <- ref.get
       } yield {
