@@ -32,7 +32,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
         count <- counter.get
 
       } yield {
-        count should be > 5
+        count should be > 4
         count should be < 15
       }
     }
@@ -48,7 +48,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
           }
           count <- counter.get
         } yield {
-          count should be > 5
+          count should be > 4
           count should be < 15
         }
       }
