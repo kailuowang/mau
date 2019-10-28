@@ -308,14 +308,14 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
     testWithRef { ref =>
       for {
         count <- counter
-        _ <- ref.getOrFetch(100.milliseconds, 300.milliseconds) {
+        _ <- ref.getOrFetch(200.milliseconds, 600.milliseconds) {
           count.update(_ + 1) *> count.get.ensure(IntentionalErr)(
             i => i != 3 && i <= 6
           )
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(800.milliseconds) //5th failed refresh doesn't trigger timeout
+        _ <- timer.sleep(1600.milliseconds) //5th failed refresh doesn't trigger timeout
         c <- count.get
         v <- ref.get
       } yield {
