@@ -304,23 +304,23 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
     }
   }
 
-  test("reset stale timer when success refresh") {
+  test("reset stale timer by successful refresh") {
     testWithRef { ref =>
       for {
         count <- counter
-        _ <- ref.getOrFetch(50.milliseconds, 200.milliseconds) {
+        _ <- ref.getOrFetch(100.milliseconds, 300.milliseconds) {
           count.update(_ + 1) *> count.get.ensure(IntentionalErr)(
-            i => i != 2 && i != 5
-          ) //errors on 2nd and 5th refresh
+            i => i != 3 && i <= 6
+          )
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(350.milliseconds) //5th failed refresh doesn't trigger timeout
+        _ <- timer.sleep(800.milliseconds) //5th failed refresh doesn't trigger timeout
         c <- count.get
         v <- ref.get
       } yield {
-        c should be > (5)
-        v.get shouldBe >(5)
+        c should be > (6)
+        v.get shouldBe 6
       }
     }
   }
