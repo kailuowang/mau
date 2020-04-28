@@ -49,7 +49,6 @@ lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCo
   parallelExecution in Test := false,
   scalaVersion := libs.vers("scalac_2.13"),
   crossScalaVersions := Seq(
-    libs.vers("scalac_2.11"),
     scalaVersion.value,
     libs.vers("scalac_2.12")
   ),
