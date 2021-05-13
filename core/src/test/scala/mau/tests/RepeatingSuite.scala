@@ -159,7 +159,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
       for {
         counter <- Ref[IO].of(0)
         _ <- Repeating.resource(counter.update(_ + 1), 0.milliseconds, true).use {
-          r =>
+          _ =>
             timer.sleep(5.seconds)
         }
         count <- counter.get

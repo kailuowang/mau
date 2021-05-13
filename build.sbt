@@ -44,7 +44,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
-lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ scalacAllSettings ++ Seq(
+lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ Seq(
   organization := "com.kailuowang",
   parallelExecution in Test := false,
   scalaVersion := libs.vers("scalac_2.13"),

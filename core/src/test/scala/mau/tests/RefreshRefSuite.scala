@@ -174,7 +174,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
     } yield {
       c should be > (0)
       c should be < (4)
-    }).unsafeToFuture
+    }).unsafeToFuture()
 
   }
 

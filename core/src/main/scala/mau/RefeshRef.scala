@@ -50,7 +50,7 @@ abstract class RefreshRef[F[_], V] {
     * A success `fetch`  resets the timer.
     *
     * @param period if set to zero will simply return `fetch`
-    * @param staleTimeout timeout after the last successful `fetch`
+    * @param staleTimeout timeout after the last successful `fetch`RepeatingSuite.scala
     * @param fetch
     * @param errorHandler
     * @return
@@ -140,7 +140,7 @@ object RefreshRef {
 
             for {
               initialV <- fetch
-              fiber <- F.start(F.suspend(loop))
+              fiber <- F.start(F.defer(loop))
               now <- nowF
               registeredO <- ref.tryModify {
                 case None        => (Some(Item(initialV, fiber, now)), true)
