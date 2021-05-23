@@ -41,9 +41,6 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     scalaJSStage in Global := FastOptStage
   )
-//
-//ThisBuild / scalacOptions += "-P:semanticdb:synthetics:on"
-//
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
