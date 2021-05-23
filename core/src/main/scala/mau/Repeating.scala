@@ -1,7 +1,6 @@
 package mau
 
-import cats.effect.concurrent.{Deferred, Ref}
-import cats.effect.{Concurrent, Fiber, Resource, Timer}
+import cats.effect.{Concurrent, Deferred, Fiber, Ref, Resource, Temporal}
 import cats.implicits._
 
 import scala.concurrent.duration.FiniteDuration
@@ -33,10 +32,10 @@ object Repeating {
       repeatDuration: FiniteDuration,
       runInParallel: Boolean
     )(implicit F: Concurrent[F],
-      T: Timer[F]
+      T: Temporal[F]
     ): F[Repeating[F]] = {
     Ref[F]
-      .of(none[Fiber[F, Unit]])
+      .of(none[Fiber[F, Throwable, Unit]])
       .map { ref =>
         new Repeating[F] {
           def pause: F[Boolean] =
@@ -81,7 +80,7 @@ object Repeating {
     *                      the effect.
     *
     */
-  def resource[F[_]: Concurrent: Timer](
+  def resource[F[_]: Temporal](
       effect: F[Unit],
       repeatDuration: FiniteDuration,
       runInParallel: Boolean

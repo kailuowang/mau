@@ -1,13 +1,16 @@
 package mau
 package tests
 
-import cats.effect.{Concurrent, IO, Resource}
-import cats.effect.concurrent.Ref
+
+import cats.effect.{Concurrent, IO, Ref, Resource, Temporal}
+import cats.effect.unsafe.implicits.global
+
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AsyncFunSuite
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+
 import cats.implicits._
 
 import scala.util.control.NoStackTrace
@@ -17,8 +20,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
   implicit override def executionContext: ExecutionContext =
     ExecutionContext.global
 
-  implicit val ctx = IO.contextShift(executionContext)
-  implicit val timer = IO.timer(executionContext)
+  implicit val timer = Temporal[IO]
 
   def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]): Future[A] =
     RefreshRef

@@ -1,7 +1,6 @@
 package mau
 
-import cats.effect.{Concurrent, Fiber, Resource, Timer}
-import cats.effect.concurrent.Ref
+import cats.effect.{Async, Fiber, Resource, Ref, Temporal}
 import cats.implicits._
 
 import scala.concurrent.duration.FiniteDuration
@@ -70,13 +69,13 @@ object RefreshRef {
 
   private case class Item[F[_], V](
       v: V,
-      refresh: Fiber[F, Unit],
+      refresh: Fiber[F, Throwable, Unit],
       lastFetch: Instant)
 
   def create[F[_], V](
       onRefreshed: V => F[Unit]
-    )(implicit F: Concurrent[F],
-      T: Timer[F]
+    )(implicit F: Async[F],
+      T: Temporal[F]
     ): F[RefreshRef[F, V]] =
     Ref.of(none[Item[F, V]]).map { ref =>
       new RefreshRef[F, V] {
@@ -125,7 +124,7 @@ object RefreshRef {
             }
 
             def loop: F[Unit] =
-              Timer[F].sleep(period) >>
+              Temporal[F].sleep(period) >>
                 fetch.attempt.flatMap {
                   case Left(e) => onFetchError(e)
 
@@ -161,18 +160,18 @@ object RefreshRef {
         }
 
         private val nowF: F[Instant] =
-          T.clock.monotonic(concurrent.duration.NANOSECONDS)
+          T.monotonic.map (_.length)
       }
     }
 
   /**
     * Cancel itself after use
     */
-  def resource[F[_]: Concurrent: Timer, V](
+  def resource[F[_]: Async, V](
       onRefreshed: V => F[Unit]
     ): Resource[F, RefreshRef[F, V]] =
     Resource.make(create[F, V](onRefreshed))(_.cancel.void)
 
-  def resource[F[_]: Concurrent: Timer, V]: Resource[F, RefreshRef[F, V]] =
-    resource[F, V]((_: V) => Concurrent[F].unit)
+  def resource[F[_]: Async, V]: Resource[F, RefreshRef[F, V]] =
+    resource[F, V]((_: V) => Async[F].unit)
 }
