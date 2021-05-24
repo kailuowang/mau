@@ -10,7 +10,7 @@ mau is available on scala 2.11, 2.12, 2.13 and scalajs.
 Add the following to your build.sbt
 ```scala
 libraryDependencies += 
-  "com.kailuowang" %% "mau" % "0.1.1"
+  "com.kailuowang" %% "mau" % "0.3.0"
 ```
 
 This library provides a set of small and well-tested mid-level constructs
