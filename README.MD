@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/kailuowang/mau.svg?branch=master)](https://travis-ci.org/kailuowang/mau)
 
-## Mau - A toolbox of mid level constructs built on cats-effect
+## Mau - A toolbox of mid level constructs built on cats-effect 3.x
 
 
 ## Installation
