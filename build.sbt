@@ -21,7 +21,7 @@ val mainDev =
     new java.net.URL("http://github.com/kailuowang")
   )
 
-lazy val libs = org.typelevel.libraries
+lazy val libs = org.typelevel.libraries.add("cats-effect", "3.1.1")
 
 lazy val mau = project
   .in(file("."))
@@ -36,7 +36,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     rootSettings,
     libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
-    scalacOptions in Test --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
+    Test / scalacOptions --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   )
   .jsSettings(
     scalaJSStage in Global := FastOptStage
@@ -46,7 +46,7 @@ lazy val buildSettings = sharedBuildSettings(gh, libs)
 
 lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ Seq(
   organization := "com.kailuowang",
-  parallelExecution in Test := false,
+  Test / parallelExecution := false,
   scalaVersion := libs.vers("scalac_2.13"),
   crossScalaVersions := Seq(
     scalaVersion.value,

@@ -1,8 +1,9 @@
 package mau
 package tests
 
-import cats.effect.IO
-import cats.effect.concurrent.Ref
+import cats.effect.{IO, Temporal, Ref}
+import cats.effect.unsafe.implicits.global
+
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import cats.implicits._
@@ -15,8 +16,7 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
   implicit override def executionContext: ExecutionContext =
     ExecutionContext.global
 
-  implicit val ctx = IO.contextShift(executionContext)
-  implicit val timer = IO.timer(executionContext)
+  implicit val timer = Temporal[IO]
 
   implicit def toFuture[A](ioA: IO[A]): Future[A] = ioA.unsafeToFuture()
 
