@@ -23,6 +23,7 @@ val mainDev =
 
 lazy val libs = org.typelevel.libraries.add("cats-effect", "3.2.1")
 
+
 lazy val mau = project
   .in(file("."))
   .settings(rootSettings, noPublishSettings)
