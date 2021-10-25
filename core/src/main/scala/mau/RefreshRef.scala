@@ -129,17 +129,15 @@ object RefreshRef {
                   case Left(e) => onFetchError(e)
 
                   case Right(v) =>
-                    for {
-                      _ <- onRefreshed(v)
-                      now <- nowF
-                      _ <- ref.tryUpdate(_.map(_.copy(v = v, lastFetch = now)))
-                      _ <- loop
-                    } yield ()
+                    onRefreshed(v) *>
+                      nowF.flatMap { now =>
+                        ref.tryUpdate(_.map(_.copy(v = v, lastFetch = now)))
+                      } *> loop
                 }
 
             for {
               initialV <- fetch
-              fiber <- F.start(F.defer(loop))
+              fiber <- F.start(loop)
               now <- nowF
               registeredO <- ref.tryModify {
                 case None        => (Some(Item(initialV, fiber, now)), true)
@@ -160,7 +158,7 @@ object RefreshRef {
         }
 
         private val nowF: F[Instant] =
-          T.monotonic.map (_.length)
+          T.monotonic.map(_.length)
       }
     }
 
