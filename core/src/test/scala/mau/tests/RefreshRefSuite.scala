@@ -2,31 +2,22 @@ package mau
 package tests
 
 
-import cats.effect.{Concurrent, IO, Ref, Resource, Temporal}
-import cats.effect.unsafe.implicits.global
-
+import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.effect.{Concurrent, IO, Ref, Resource}
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.funsuite.AsyncFunSuite
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-
 import cats.implicits._
+import org.scalatest.freespec.AsyncFreeSpec
 
 import scala.util.control.NoStackTrace
 
-class RefreshRefSuite extends AsyncFunSuite with Matchers {
+class RefreshRefSuite extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
-  implicit override def executionContext: ExecutionContext =
-    ExecutionContext.global
-
-  implicit val timer = Temporal[IO]
-
-  def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]): Future[A] =
+  def testWithRef[A](f: RefreshRef[IO, Int] => IO[A]): IO[A] =
     RefreshRef
       .resource[IO, Int]((_: Int) => IO(print(".")))
       .use(f)
-      .unsafeToFuture()
 
   def counter: IO[Ref[IO, Int]] = Ref.of[IO, Int](0)
 
@@ -41,7 +32,7 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           for {
             te <- tef
             fiber <- Concurrent[IO].start(
-              timer.sleep(25.milliseconds) >> //sleep here to force a concurrent race
+              IO.sleep(25.milliseconds) >> //sleep here to force a concurrent race
                 threadAction(te)
             )
 
@@ -52,48 +43,47 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
       })
       .map(_.map(_._1))
 
-  test("empty returns None") {
+  "empty returns None" in {
     testWithRef { ref =>
-      ref.get.map(_ shouldBe None)
-    }
+      ref.get
+    }.asserting(_ shouldBe None)
   }
 
-  test("get with fetch returns value") {
+  "get with fetch returns value" in {
     testWithRef { ref =>
-      ref.getOrFetch(1.seconds)(IO(1)).map(_ shouldBe 1)
-    }
+      ref.getOrFetch(1.seconds)(IO(1))
+    }.asserting(_ shouldBe 1)
   }
 
-  test("cancel return false if there is no refreshing") {
+  "cancel return false if there is no refreshing" in {
     testWithRef { ref =>
       ref.cancel
-        .map(_ shouldBe false)
-    }
+    }.asserting(_ shouldBe false)
   }
 
-  test("cancel return true if something is canceled") {
+  "cancel return true if something is canceled" in {
     testWithRef { ref =>
       for {
         _ <- ref.getOrFetch(1.seconds)(IO(1))
         r <- ref.cancel
-      } yield r shouldBe true
-    }
+      } yield r
+    }.asserting(_ shouldBe true)
   }
 
-  test("auto refresh value") {
+  "auto refresh value" in {
     testWithRef { ref =>
       for {
         count <- counter
         _ <- ref.getOrFetch(50.milliseconds) {
           count.update(_ + 1) *> count.get
         }
-        _ <- timer.sleep(150.milliseconds)
+        _ <- IO.sleep(150.milliseconds)
         c <- count.get
-      } yield c should be > (1)
-    }
+      } yield c
+    }.asserting(_ should be > (1))
   }
 
-  test("no longer refresh after cancel") {
+  "no longer refresh after cancel" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -101,13 +91,13 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           count.update(_ + 1) *> count.get
         }
         _ <- ref.cancel
-        _ <- timer.sleep(200.milliseconds)
+        _ <- IO.sleep(200.milliseconds)
         c <- count.get
-      } yield c should be < (2)
-    }
+      } yield c
+    }.asserting(_ should be < (2))
   }
 
-  test("does not register a second refresh value") {
+  "does not register a second refresh value" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -115,26 +105,26 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         _ <- ref.getOrFetch(50.milliseconds) {
           count.update(_ + 1) *> count.get
         }
-        _ <- timer.sleep(100.milliseconds)
+        _ <- IO.sleep(100.milliseconds)
         c <- count.get
-      } yield c shouldBe 0
-    }
+      } yield c
+    }.asserting(_  shouldBe 0)
   }
 
-  test("get the refreshed value on a second fetch") {
+  "get the refreshed value on a second fetch" in {
     testWithRef { ref =>
       for {
         count <- counter
         _ <- ref.getOrFetch(50.milliseconds) {
           count.update(_ + 1) *> count.get
         }
-        _ <- timer.sleep(100.milliseconds)
+        _ <- IO.sleep(100.milliseconds)
         newValue <- ref.getOrFetch(1.second)(IO(1))
-      } yield newValue should be >= (2)
-    }
+      } yield newValue
+    }.asserting(_  should be >= (2))
   }
 
-  test("register a second refresh value if the first one is canceled") {
+  "register a second refresh value if the first one is canceled" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -143,23 +133,23 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         _ <- ref.getOrFetch(50.milliseconds) {
           count.update(_ + 1) *> count.get
         }
-        _ <- timer.sleep(100.milliseconds)
+        _ <- IO.sleep(100.milliseconds)
         c <- count.get
-      } yield c should be > (1)
-    }
+      } yield c
+    }.asserting(_ should be > (1))
   }
 
-  test("returns None after cancel") {
+  "returns None after cancel" in {
     testWithRef { ref =>
       for {
         _ <- ref.getOrFetch(1.second)(IO(1))
         _ <- ref.cancel
         r <- ref.get
-      } yield r shouldBe None
-    }
+      } yield r
+    }.asserting(_ shouldBe None)
   }
 
-  test("resource cancel itself after use") {
+  "resource cancel itself after use" in {
 
     (for {
       count <- counter
@@ -168,19 +158,19 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           _ <- ref.getOrFetch(50.milliseconds) {
             count.update(_ + 1) *> count.get
           }
-          _ <- timer.sleep(100.milliseconds)
+          _ <- IO.sleep(100.milliseconds)
         } yield ()
       }
-      _ <- timer.sleep(150.milliseconds)
+      _ <- IO.sleep(150.milliseconds)
       c <- count.get
-    } yield {
+    } yield c).asserting { c =>
       c should be > (0)
       c should be < (4)
-    }).unsafeToFuture()
+    }
 
   }
 
-  test("concurrent access doesn't not produce multiple refreshes") {
+  "concurrent access doesn't not produce multiple refreshes" in {
     testWithRef { ref =>
       concurrently(10)(counter) { threadCount =>
         ref
@@ -190,45 +180,45 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           .void
       }.use { threadCounts =>
         for {
-          _ <- timer.sleep(350.milliseconds)
+          _ <- IO.sleep(350.milliseconds)
           counts <- threadCounts.traverse(_.get)
-        } yield counts.count(_ > 2) shouldBe 1
+        } yield counts
       }
-    }
+    }.asserting(_.count(_ > 2) shouldBe 1)
   }
 
-  test("concurrent get works") {
+  "concurrent get works" in {
     testWithRef { ref =>
       ref.getOrFetch(50.milliseconds)(IO(1)) >>
         concurrently(10)(Ref.of[IO, Option[Int]](None)) { read =>
           ref.get.flatMap(read.set)
         }.use { threadReads =>
-          timer.sleep(100.milliseconds) >>
+          IO.sleep(100.milliseconds) >>
             threadReads.traverse(_.get).map { results =>
-              results.forall(_ == Some(1)) shouldBe true
+              results.forall(_ == Some(1))
             }
         }
-    }
+    }.asserting(_  shouldBe true)
   }
 
-  test("failed refresh stops and removes the value") {
+  "failed refresh stops and removes the value" in {
     testWithRef { ref =>
       for {
         count <- counter
         _ <- ref.getOrFetch(50.milliseconds) {
           count.update(_ + 1) *> count.get.ensure(new Exception("Boom"))(_ <= 1)
         }
-        _ <- timer.sleep(150.milliseconds)
+        _ <- IO.sleep(150.milliseconds)
         c <- count.get
         v <- ref.get
-      } yield {
-        c shouldBe 2
-        v shouldBe None
-      }
+      } yield (c, v)
+    }.asserting{ case (c, v) =>
+      c shouldBe 2
+      v shouldBe None
     }
   }
 
-  test("zero length refresh period simply fetch on every time it fetches") {
+  "zero length refresh period simply fetch on every time it fetches" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -236,20 +226,20 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
           count.update(_ + 1).as(1)
         }
         c1 <- count.get
-        _ <- timer.sleep(150.milliseconds)
+        _ <- IO.sleep(150.milliseconds)
 
         _ <- ref.getOrFetch(0.milliseconds) {
           count.update(_ + 1).as(1)
         }
         c2 <- count.get
-      } yield {
-        c1 shouldBe 1
-        c2 shouldBe 2
-      }
+      } yield (c1, c2)
+    }.asserting { case (c1, c2) =>
+      c1 shouldBe 1
+      c2 shouldBe 2
     }
   }
 
-  test("handle error with custom error handler") {
+  "handle error with custom error handler" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -258,17 +248,17 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(150.milliseconds)
+        _ <- IO.sleep(150.milliseconds)
         c <- count.get
         v <- ref.get
-      } yield {
-        c should be >= (3)
-        v shouldBe Some(1)
-      }
+      } yield (c, v)
+    }.asserting { case (c, v) =>
+      c should be >= (3)
+      v shouldBe Some(1)
     }
   }
 
-  test("rethrow error with custom error handler") {
+  "rethrow error with custom error handler" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -277,17 +267,17 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.raiseError(IntentionalErr)
         }
-        _ <- timer.sleep(150.milliseconds)
+        _ <- IO.sleep(150.milliseconds)
         c <- count.get
         v <- ref.get
-      } yield {
-        c shouldBe 2
-        v shouldBe None
-      }
+      } yield (c, v)
+    }.asserting { case (c, v) =>
+      c shouldBe 2
+      v shouldBe None
     }
   }
 
-  test("remove stale value after continuous failed refresh") {
+  "remove stale value after continuous failed refresh" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -296,17 +286,18 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(350.milliseconds)
+        _ <- IO.sleep(350.milliseconds)
         c <- count.get
         v <- ref.get
-      } yield {
-        c should be < (5)
-        v shouldBe None
-      }
+      } yield (c, v)
+
+    }.asserting { case (c, v) =>
+      c should be < (5)
+      v shouldBe None
     }
   }
 
-  test("reset stale timer by successful refresh") {
+  "reset stale IO by successful refresh" in {
     testWithRef { ref =>
       for {
         count <- counter
@@ -317,12 +308,11 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
         } {
           case IntentionalErr => IO.unit
         }
-        _ <- timer.sleep(2.seconds)
+        _ <- IO.sleep(2.seconds)
         v <- ref.get
-      } yield {
-        v.get should be > 8 //if the timer wasn't reset , the failed 8th refresh would kill the refresh
-      }
-    }
+      } yield
+        v//if the IO wasn't reset , the failed 8th refresh would kill the refresh
+    }.asserting(_.get should be > 8 )
   }
 
 }

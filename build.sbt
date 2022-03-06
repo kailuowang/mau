@@ -36,6 +36,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     rootSettings,
     libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
+    libs.testDependencies("cats-effect-testing-scalatest"),
     Test / scalacOptions --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
   )
   .jsSettings(
@@ -44,13 +45,14 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
-lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ Seq(
+lazy val commonSettings = sharedCommonSettings ++ Seq(
   organization := "com.kailuowang",
   Test / parallelExecution := false,
   scalaVersion := libs.vers("scalac_2.13"),
   crossScalaVersions := Seq(
     scalaVersion.value,
-    libs.vers("scalac_2.12")
+    libs.vers("scalac_2.12"),
+    "3.1.1"
   ),
   developers := List(mainDev)
 )
