@@ -1,1 +1,1 @@
-addSbtPlugin("org.typelevel" % "sbt-catalysts" % "1.2.4")
+addSbtPlugin("com.kailuowang" % "sbt-catalysts" % "1.2.5")
