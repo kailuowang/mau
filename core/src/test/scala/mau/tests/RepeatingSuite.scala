@@ -12,7 +12,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import concurrent.duration._
 
 class RepeatingSuite extends AsyncFreeSpec with Matchers {
-
   implicit override def executionContext: ExecutionContext =
     ExecutionContext.global
 
@@ -30,7 +29,6 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
         }
         _ <- timer.sleep(500.milliseconds)
         count <- counter.get
-
       } yield {
         count should be > 5
         count should be < 15
@@ -109,7 +107,6 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
               r.pause >> r.resume >> timer.sleep(500.milliseconds)
           }
           count <- counter.get
-
         } yield {
           count should be > 7
         }
@@ -132,7 +129,6 @@ class RepeatingSuite extends AsyncFreeSpec with Matchers {
           }
           .map(_ shouldBe true)
       }
-
     }
 
     "running" - {

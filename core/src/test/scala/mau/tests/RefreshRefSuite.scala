@@ -1,7 +1,6 @@
 package mau
 package tests
 
-
 import cats.effect.{Concurrent, IO, Ref, Resource, Temporal}
 import cats.effect.unsafe.implicits.global
 
@@ -16,7 +15,6 @@ import cats.implicits._
 import scala.util.control.NoStackTrace
 
 class RefreshRefSuite extends AsyncFunSuite with Matchers {
-
   implicit override def executionContext: ExecutionContext =
     ExecutionContext.global
 
@@ -44,7 +42,6 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
               timer.sleep(25.milliseconds) >> //sleep here to force a concurrent race
                 threadAction(te)
             )
-
           } yield (te, fiber)
         }
       } {
@@ -160,7 +157,6 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
   }
 
   test("resource cancel itself after use") {
-
     (for {
       count <- counter
       _ <- RefreshRef.resource[IO, Int].use { ref =>
@@ -177,7 +173,6 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
       c should be > (0)
       c should be < (4)
     }).unsafeToFuture()
-
   }
 
   test("concurrent access doesn't not produce multiple refreshes") {
@@ -324,7 +319,6 @@ class RefreshRefSuite extends AsyncFunSuite with Matchers {
       }
     }
   }
-
 }
 
 case object IntentionalErr extends RuntimeException with NoStackTrace

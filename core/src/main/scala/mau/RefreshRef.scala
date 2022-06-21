@@ -6,7 +6,6 @@ import cats.implicits._
 import scala.concurrent.duration.FiniteDuration
 
 abstract class RefreshRef[F[_], V] {
-
   /**
     * Cancel polling and remove data from memory
     * @return true if there was data and polling, false if it's empty
@@ -61,7 +60,6 @@ abstract class RefreshRef[F[_], V] {
     )(errorHandler: PartialFunction[Throwable, F[Unit]]
     ): F[V] =
     get(period, Some(staleTimeout))(fetch)(errorHandler)
-
 }
 
 object RefreshRef {
@@ -79,7 +77,6 @@ object RefreshRef {
     ): F[RefreshRef[F, V]] =
     Ref.of(none[Item[F, V]]).map { ref =>
       new RefreshRef[F, V] {
-
         def cancel: F[Boolean] =
           ref.modify {
             case None                => (None, F.pure(false))
@@ -99,7 +96,6 @@ object RefreshRef {
           )(errorHandler: PartialFunction[Throwable, F[Unit]]
           ): F[V] = {
           def startRefresh: F[V] = {
-
             def onFetchError(e: Throwable): F[Unit] = {
               def isStale: F[Boolean] =
                 staleTimeoutO.fold(F.pure(false)) { timeout =>

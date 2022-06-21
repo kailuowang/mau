@@ -6,7 +6,6 @@ import cats.implicits._
 import scala.concurrent.duration.FiniteDuration
 
 abstract class Repeating[F[_]] {
-
   /**
     *
     * @return true if it was running and now successfully paused
@@ -23,7 +22,6 @@ abstract class Repeating[F[_]] {
 }
 
 object Repeating {
-
   /**
     * see doc of [resource]
     */
@@ -68,7 +66,6 @@ object Repeating {
         }
       }
       .flatTap(_.resume)
-
   }
 
   /**
