@@ -1,1 +1,1 @@
-addSbtPlugin("com.kailuowang" % "sbt-catalysts" % "1.2.5")
+addSbtPlugin("com.kailuowang" % "sbt-catalysts" % "1.3.0")
