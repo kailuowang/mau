@@ -5,7 +5,7 @@
 
 ## Installation
 
-mau is available on scala 2.11, 2.12, 2.13 and scalajs.
+mau is available on scala 2.12, 2.13 and 3.0+
 
 Add the following to your build.sbt
 ```scala
