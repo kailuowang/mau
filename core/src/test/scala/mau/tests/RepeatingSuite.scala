@@ -156,7 +156,7 @@ class RepeatingSuite extends AsyncFreeSpec with AsyncIOSpec with Matchers {
         }
         count <- counter.get
       } yield count).asserting { count =>
-        val threshod = if (Platform.isJs) 100 else 100000
+        val threshod = 100000
         count should be > threshod
       }
     }
