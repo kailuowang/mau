@@ -59,7 +59,7 @@ object Repeating {
                   if (existing.isDefined) (existing, false)
                   else (Some(fiber), true)
                 }
-                _ <- if (success) go.complete(()) else fiber.cancel
+                _ <- if (success) go.complete(()).void else fiber.cancel
               } yield success
             )
           }

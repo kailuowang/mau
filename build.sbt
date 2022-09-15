@@ -23,40 +23,30 @@ val mainDev =
 
 lazy val libs = org.typelevel.libraries.add("cats-effect", "3.3.14")
 
-lazy val mau = project
-  .in(file("."))
-  .settings(rootSettings, noPublishSettings)
-  .aggregate(core.jvm, core.js)
-
-lazy val core = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Pure)
-  .in(file("core"))
+lazy val mau = project.in(file("core"))
   .settings(
     name := "mau",
     rootSettings,
     libs.dependencies("cats-effect"),
     libs.testDependencies("scalatest"),
+    libs.testDependencies("cats-effect-testing-scalatest"),
     Test / scalacOptions --= Seq("-Xlint:-unused,_", "-Ywarn-unused:imports")
-  )
-  .jsSettings(
-    scalaJSStage in Global := FastOptStage
   )
 
 lazy val buildSettings = sharedBuildSettings(gh, libs)
 
-lazy val commonSettings = addCompilerPlugins(libs, "kind-projector") ++ sharedCommonSettings ++ Seq(
+lazy val commonSettings = sharedCommonSettings ++ Seq(
   organization := "com.kailuowang",
   Test / parallelExecution := false,
   scalaVersion := libs.vers("scalac_2.13"),
   crossScalaVersions := Seq(
     scalaVersion.value,
-    libs.vers("scalac_2.12")
+    libs.vers("scalac_2.12"),
+    "3.2.0"
   ),
   developers := List(mainDev)
 )
 
 lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sharedReleaseProcess
 
-lazy val scoverageSettings = sharedScoverageSettings(60)
-
-lazy val rootSettings = buildSettings ++ commonSettings ++ publishSettings ++ scoverageSettings
+lazy val rootSettings = buildSettings ++ commonSettings ++ publishSettings
