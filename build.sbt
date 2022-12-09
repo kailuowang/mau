@@ -48,6 +48,8 @@ lazy val commonSettings = sharedCommonSettings ++ Seq(
   developers := List(mainDev)
 )
 
-lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sharedReleaseProcess
+lazy val publishSettings = sharedPublishSettings(gh) ++ credentialSettings ++ sharedReleaseProcess ++ Seq(
+  releaseCrossBuild := true
+)
 
 lazy val rootSettings = buildSettings ++ commonSettings ++ publishSettings
