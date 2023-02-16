@@ -21,7 +21,7 @@ val mainDev =
     new java.net.URL("http://github.com/kailuowang")
   )
 
-lazy val libs = org.typelevel.libraries.add("cats-effect", "3.4.6")
+lazy val libs = org.typelevel.libraries.add("cats-effect", "3.4.7")
 
 lazy val mau = project
   .in(file("."))
